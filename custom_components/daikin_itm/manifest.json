@@ -1,0 +1,11 @@
+{
+  "domain": "daikin_itm",
+  "name": "Daikin intelligent Touch Manager",
+  "codeowners": [],
+  "config_flow": true,
+  "documentation": "https://github.com/TUO_UTENTE/daikin_itm",
+  "iot_class": "local_polling",
+  "issue_tracker": "https://github.com/TUO_UTENTE/daikin_itm/issues",
+  "requirements": [],
+  "version": "0.3.2"
+}
