@@ -9,6 +9,14 @@
           "username": "Username",
           "password": "Password"
         }
+      },
+      "reconfigure": {
+        "title": "Change credentials",
+        "description": "New iTM portal username and password. The login is checked before saving.",
+        "data": {
+          "username": "Username",
+          "password": "Password"
+        }
       }
     },
     "error": {
@@ -18,7 +26,8 @@
       "no_zones": "No units found"
     },
     "abort": {
-      "already_configured": "This iTM is already configured"
+      "already_configured": "This iTM is already configured",
+      "reconfigure_successful": "Credentials updated"
     }
   },
   "entity": {
