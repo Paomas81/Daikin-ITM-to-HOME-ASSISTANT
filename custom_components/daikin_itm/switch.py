@@ -9,11 +9,19 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from . import ItmConfigEntry
 from .entity import ItmUnitEntity
+from .limits_entity import ItmLimitEntity
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ItmConfigEntry, async_add_entities: AddEntitiesCallback) -> None:
     coordinator = entry.runtime_data
-    async_add_entities(ItmVentSwitch(coordinator, u) for u in coordinator.data.values() if not u.is_climate)
+    entities: list[SwitchEntity] = [ItmVentSwitch(coordinator, u) for u in coordinator.data.values() if not u.is_climate]
+    entities += [
+        ItmLimitSwitch(coordinator, u, kind, "enabled")
+        for u in coordinator.data.values()
+        if u.is_climate
+        for kind in ("heat", "cool")
+    ]
+    async_add_entities(entities)
 
 
 class ItmVentSwitch(ItmUnitEntity, SwitchEntity):
@@ -43,3 +51,18 @@ class ItmVentSwitch(ItmUnitEntity, SwitchEntity):
 
     async def async_turn_off(self, **kwargs: Any) -> None:
         await self._set(False)
+
+
+class ItmLimitSwitch(ItmLimitEntity, SwitchEntity):
+    """Attiva/disattiva la restrizione del setpoint (caldo o freddo)."""
+
+    @property
+    def is_on(self) -> bool | None:
+        lim = self.limits
+        return getattr(lim, f"{self._kind}_enabled") if lim else None
+
+    async def async_turn_on(self, **kwargs: Any) -> None:
+        await self._write(True)
+
+    async def async_turn_off(self, **kwargs: Any) -> None:
+        await self._write(False)

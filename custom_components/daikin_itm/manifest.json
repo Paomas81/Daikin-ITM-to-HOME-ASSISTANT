@@ -1,11 +1,11 @@
 {
   "domain": "daikin_itm",
   "name": "Daikin intelligent Touch Manager",
-  "codeowners": [],
+  "codeowners": [Paomas81],
   "config_flow": true,
-  "documentation": "https://github.com/TUO_UTENTE/daikin_itm",
+  "documentation": "https://github.com/Paomas81/daikin_itm",
   "iot_class": "local_polling",
-  "issue_tracker": "https://github.com/TUO_UTENTE/daikin_itm/issues",
+  "issue_tracker": "https://github.com/Paomas81/daikin_itm/issues",
   "requirements": [],
-  "version": "0.2.1"
+  "version": "0.3.0"
 }

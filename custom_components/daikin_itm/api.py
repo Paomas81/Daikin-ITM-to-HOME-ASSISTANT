@@ -48,6 +48,14 @@ TAB_AC = 2
 PART_MODE_CHECK = 0x0011
 PART_MODE_LIST = 0x0012
 PART_OK = 0x0005
+PART_CANCEL = 0x0006
+# Restrizioni setpoint (scheda A/C delle impostazioni dettagliate)
+PART_LIMIT_CHECK = 0x003C
+LIMIT_PARTS = {
+    # tipo: (Attiva/Disatt., testo Max, Modifica Max, testo Min, Modifica Min)
+    "cool": (0x003F, 0x0041, 0x0043, 0x0045, 0x0047),
+    "heat": (0x0049, 0x004B, 0x004D, 0x004F, 0x0051),
+}
 
 # icona velocità -> (tacche attuali, tacche totali dell'unità)
 FAN_ICONS = {
@@ -115,6 +123,40 @@ class Unit:
     @property
     def fan_steps(self) -> int | None:
         return FAN_ICONS[self.fan_icon][1] if self.fan_icon in FAN_ICONS else None
+
+
+@dataclass
+class Limits:
+    """Restrizioni del setpoint di un'unità (Lim. freddo / Lim. caldo)."""
+
+    cool_enabled: bool | None = None
+    cool_max: float | None = None
+    cool_min: float | None = None
+    heat_enabled: bool | None = None
+    heat_max: float | None = None
+    heat_min: float | None = None
+
+
+def parse_limits(resp: str) -> Limits:
+    """Legge i limiti dalla risposta che apre le impostazioni dettagliate."""
+
+    def num(part: int) -> float | None:
+        m = re.search(f"{part:04x}00c9([0-9a-f]{{4}})", resp)
+        if not m:
+            return None
+        n = RE_NUMBER.search(resp[m.end():m.end() + int(m.group(1), 16)])
+        return float(n.group()) if n else None
+
+    def enabled(part: int) -> bool | None:
+        m = re.search(f"{part:04x}0190([0-9a-f]{{8}})", resp)
+        return None if not m else int(m.group(1), 16) == 0  # 0 = Attiva, 1 = Disatt.
+
+    lim = Limits()
+    for kind, (p_en, p_max, _, p_min, _) in LIMIT_PARTS.items():
+        setattr(lim, f"{kind}_enabled", enabled(p_en))
+        setattr(lim, f"{kind}_max", num(p_max))
+        setattr(lim, f"{kind}_min", num(p_min))
+    return lim
 
 
 def _h4(n: int) -> str:
@@ -378,5 +420,53 @@ class ItmClient:
                     await self._goto_unit(group, name)
             if power_on and self._panel.onoff != 0:
                 await self._power(True)
+
+        await self._in_session(work)
+
+    # ---------- restrizioni setpoint ----------
+
+    async def _confirm_details(self) -> None:
+        resp = await self._press(SCREEN_DETAIL, PART_OK)
+        if dlg := re.search(r"00060007([0-9a-f]{4})0002", resp):
+            await self._press(SCREEN_DETAIL, int(dlg.group(1), 16))  # "Impostare?" -> Sì
+        else:
+            raise ItmError("Conferma delle impostazioni non ricevuta")
+
+    async def async_get_limits(self, units: list[tuple[str, str]]) -> dict[str, Limits]:
+        """Legge i limiti delle unità indicate (gruppo, nome). Schermata pesante: usare con parsimonia."""
+
+        async def work() -> dict[str, Limits]:
+            out: dict[str, Limits] = {}
+            for group, name in units:
+                await self._goto_unit(group, name)
+                out[f"{group}/{name}"] = parse_limits(await self._press(SCREEN_OPER, PART_DETAILS))
+                await self._press(SCREEN_DETAIL, PART_CANCEL)  # chiude senza modificare
+            return out
+
+        return await self._in_session(work)
+
+    async def async_set_limit(self, group: str, name: str, kind: str, field: str, value) -> None:
+        """kind: "heat" o "cool"; field: "enabled" (bool), "max" o "min" (gradi interi)."""
+        p_en, _, p_mod_max, _, p_mod_min = LIMIT_PARTS[kind]
+
+        async def work() -> None:
+            await self._goto_unit(group, name)
+            await self._press(SCREEN_OPER, PART_DETAILS)
+            await self._event(SCREEN_DETAIL, PART_TABS, 8, 1, TAB_AC)
+            await self._event(SCREEN_DETAIL, PART_LIMIT_CHECK, 1, 1, 1)
+            if field == "enabled":
+                await self._event(SCREEN_DETAIL, p_en, 1, 1, 0 if value else 1)
+            else:
+                resp = await self._press(SCREEN_DETAIL, p_mod_max if field == "max" else p_mod_min)
+                dlg = re.search(r"00060007([0-9a-f]{4})0006", resp)
+                if not dlg:
+                    raise ItmError("Tastierino numerico non ricevuto")
+                # valore come array di 2 elementi; solo gradi interi (codifica dei decimali non verificata)
+                await self._post(
+                    _h8(self._seq) + self._sid + "0007" + dlg.group(1) + "0001" + "0010" + "00000002"
+                    + "0002" + "0000" + f"{int(value) & 0xFFFF:04x}" + "000000000000"
+                )
+                self._seq += 1
+            await self._confirm_details()
 
         await self._in_session(work)

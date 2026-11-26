@@ -15,13 +15,19 @@ Ogni unità dell'iTM diventa un dispositivo in Home Assistant, collegato al disp
 
 **Ventilazione** (gruppo "Ventilatore", VAM): `switch` Avvia/Arresta.
 
+**Limiti del setpoint** (entità di configurazione, **disattivate di default**): per ogni unità interna
+Limite caldo/freddo attivo (`switch`) e Max/Min (`number`, gradi interi). Compaiono solo nella pagina
+del dispositivo, sezione Configurazione, e non nelle dashboard automatiche. Vengono letti solo per le
+unità dove almeno una di queste entità è attivata, una volta all'ora e dopo ogni modifica, perché
+richiedono di aprire le impostazioni dettagliate dell'unità.
+
 Le unità senza setpoint sono trattate come VAM. Se un'unità mostra un'icona di velocità non
 riconosciuta, la velocità non compare e il codice grezzo è nell'attributo `icona_ventilazione`.
 
 ## Sessione unica
 
 L'iTM accetta un solo accesso web alla volta. L'integrazione fa login, legge tutte le unità e fa
-logout ogni 120 secondi; ogni comando apre e chiude una sessione propria. Se qualcuno è collegato
+logout ogni 60 secondi (modificabile nelle Opzioni dell'integrazione, minimo 30); ogni comando apre e chiude una sessione propria. Se qualcuno è collegato
 dal browser, la lettura viene rimandata (attributo `portale_occupato`) e i comandi danno un errore.
 
 Dopo un comando lo stato si aggiorna subito in modo ottimistico e viene riletto dopo 15 secondi,
