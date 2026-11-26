@@ -1,0 +1,31 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Daikin intelligent Touch Manager",
+        "description": "Address and credentials of the iTM web portal. A dedicated user is recommended.",
+        "data": {
+          "host": "IP address",
+          "username": "Username",
+          "password": "Password"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Cannot connect to the iTM",
+      "invalid_auth": "Invalid username or password",
+      "busy": "Portal busy: another session is open (browser or panel). Close it and retry.",
+      "no_zones": "No units found"
+    },
+    "abort": {
+      "already_configured": "This iTM is already configured"
+    }
+  },
+  "entity": {
+    "sensor": {
+      "supply_temperature": {
+        "name": "Supply temperature"
+      }
+    }
+  }
+}
